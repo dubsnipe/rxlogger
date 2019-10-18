@@ -46,7 +46,8 @@ Optional
 
 ### Folder organization
 
-C:.
+```
+.
 │   LICENSE
 │   README.md
 │
@@ -56,6 +57,7 @@ C:.
     ├───arduino
     └───plot
             rxlogger.Rmd
+```
 
 ### Buying parts
 
