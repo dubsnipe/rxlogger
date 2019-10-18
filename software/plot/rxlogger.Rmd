@@ -1,0 +1,39 @@
+---
+title: "Data analysis of rxlogger"
+output:
+  html_document:
+    df_print: paged
+---
+
+# Description
+
+This simple script plots humidity and temperature levels by the first version of the Reacción Data Logger (rxlogger).
+
+```{r initialize}
+require(lubridate)
+require(dplyr)
+require(ggplot2)
+
+```
+
+
+```{r plot}
+
+th <- as_tibble(read.csv2(file="TEMP-HUM.csv", sep=",", header=F, stringsAsFactors = F, dec=".", strip.white = T, colClasses=c("character"), col.names = c("date", "time", "temp", "hum")))
+# th <- th[-c(1:3),]
+th <- th %>% mutate(datetime = paste(th$date, th$time) %>% as_datetime(), 
+                    temp = temp %>% as.double(),
+                    hum = hum %>% as.double()
+                    ) %>% 
+             select(datetime, temp, hum)
+
+ggplot(th, aes(x=datetime, y=temp)) + 
+    geom_point(aes(color=temp)) + 
+    geom_point(aes(x=datetime, y=hum, color=hum)) + 
+    ggtitle("Mediciones de humedad y temperatura") + 
+    xlab("Fecha/Hora") + ylab("Mediciones") +
+    theme_bw() +
+    guides(color="none")
+
+```
+
