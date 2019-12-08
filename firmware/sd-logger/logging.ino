@@ -103,7 +103,8 @@ end:
 
 //This function formats and prints the current date and time to a given string.
 void get_date_time_str(char *str, size_t size) {
+  RtcDateTime dt = rtc.GetDateTime();
   snprintf_P(str, size, PSTR("%d/%02d/%02d, %02d:%02d:%02d, "),
-             rtc.getYear(), rtc.getMonth(), rtc.getDay(),
-             rtc.getHour(), rtc.getMinute(), rtc.getSecond());
+             dt.Year(), dt.Month(), dt.Day(),
+             dt.Hour(), dt.Minute(), dt.Second());
 }

@@ -41,7 +41,10 @@ void do_commands() {
         int year = Serial.parseInt();
         uint8_t month = Serial.parseInt();
         uint8_t day = Serial.parseInt();
-        rtc.setDate(day, month, year);
+        RtcDateTime old_dt = rtc.GetDateTime();
+        RtcDateTime new_dt(year, month, day, old_dt.Hour(),
+                           old_dt.Minute(), old_dt.Second());
+        rtc.SetDateTime(new_dt);
         Serial.println(F("Date has been set. New date & time is:"));
         print_date_time();
       }
@@ -51,7 +54,10 @@ void do_commands() {
       {
         uint8_t hour = Serial.parseInt();
         uint8_t minute = Serial.parseInt();
-        rtc.setTime(0, minute, hour);
+        RtcDateTime old_dt = rtc.GetDateTime();
+        RtcDateTime new_dt(old_dt.Year(), old_dt.Month(), old_dt.Day(),
+                           hour, minute, 0);
+        rtc.SetDateTime(new_dt);
         Serial.println(F("Time has been set. New date & time is:"));
         print_date_time();
       }
@@ -72,8 +78,9 @@ void do_commands() {
 //This function formats and prints the current date and time.
 void print_date_time() {
   char txt_buf[32];
+  RtcDateTime dt = rtc.GetDateTime();
   snprintf_P(txt_buf, sizeof(txt_buf), PSTR("%d/%02d/%02d %02d:%02d:%02d"),
-            rtc.getYear(), rtc.getMonth(), rtc.getDay(),
-            rtc.getHour(), rtc.getMinute(), rtc.getSecond());
+             dt.Year(), dt.Month(), dt.Day(),
+             dt.Hour(), dt.Minute(), dt.Second());
   Serial.println(txt_buf);
 }

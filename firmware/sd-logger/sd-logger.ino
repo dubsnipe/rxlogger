@@ -8,6 +8,7 @@
 
 //Built-in libraries.
 #include <avr/sleep.h>
+#include <avr/wdt.h>
 #include <SPI.h>
 
 //SD by Arduino, Sparkfun version 1.2.4
@@ -17,8 +18,9 @@
 //(Requires Adafruit unified sensor by Adafruit version 1.0.3)
 #include <DHT.h>
 
-//PCF8583 by Xose Perez version 1.0.0
-#include <PCF8583.h>
+//Rtc by Makuna version=2.3.3
+#include <ThreeWire.h>
+#include <RtcDS1302.h>
 
 //Program configurations.
 //-----------------------
@@ -32,7 +34,7 @@ const int command_timeout = 5;
 //Pins used to register user-input events through buttons. Each must map to a valid
 //pin-change interrupt source.
 const int button_pins[] = {
-  7, 6
+  6, 5
 };
 const int num_buttons = sizeof(button_pins) / sizeof(button_pins[0]);
 
@@ -47,14 +49,14 @@ const int PIN_LED = 8;
 const int PIN_SD_PWR = 9;
 const int PIN_SD_CS = 10;
 const int PIN_DHT = 3;
-const int PIN_RTC_INT = 2;
 
 //Peripheral driver instances.
 DHT dht(PIN_DHT, DHT11);
-PCF8583 rtc(0xA0);
+ThreeWire ThreeWireRTC(A4, A5, 7); //RTC pins: IO, SCLK, CE
+RtcDS1302<ThreeWire> rtc(ThreeWireRTC);
 
 //Interrupt flags.
-bool rtc_flag = false;
+bool wdt_flag = false;
 bool button_flag = false;
 
 void setup() {
@@ -64,6 +66,9 @@ void setup() {
 
   //Initialize the temperature/humidity sensor.
   dht.begin();
+
+  //Initialize the RTC.
+  rtc.Begin();
 
   //Initialize the serial terminal.
   Serial.begin(9600);
@@ -75,9 +80,12 @@ void setup() {
   sleep_enable();
   set_sleep_mode(SLEEP_MODE_PWR_DOWN);
 
-  //Prepare for RTC wake-up interrupts.
-  pinMode(PIN_RTC_INT, INPUT_PULLUP);
-  attachInterrupt(digitalPinToInterrupt(PIN_RTC_INT), rtc_isr, RISING);
+  //Configure the WDT for wake-up interrupts every second (approximately).
+  MCUSR = 0;                          //Clear all status flags.
+  WDTCSR = (1 << WDCE) | (1 << WDE);  //Enable configuration of WDT.
+  WDTCSR =                            //Set interrupt mode and 1s period.
+    (1 << WDIE) | (1 << WDP2) | (1 << WDP1);
+  wdt_reset();                        //Reset the time count.
 
   //Prepare for button wake-up interrupts.
   for (int i = 0; i < num_buttons; i++) {
@@ -93,10 +101,10 @@ void loop() {
   static int sleep_count = 0;
 
   //The processor executes the loop function every time it wakes up.
-  //Once every second, the RTC timer wakes up the processor. Increase the sleep
-  //count whenever this happens and perform logging every time the log interval
-  //elapses.
-  if (rtc_flag) {
+  //Once every second, the WDT wakes up the processor. Increase the sleep
+  //count whenever this happens and perform logging every time the log
+  //interval elapses.
+  if (wdt_flag) {
     sleep_count++;
 
     if (sleep_count >= log_interval) {
@@ -104,7 +112,7 @@ void loop() {
       sleep_count = 0;
     }
 
-    rtc_flag = false;
+    wdt_flag = false;
   }
 
   if (button_flag) {
@@ -116,11 +124,11 @@ void loop() {
   sleep_cpu();
 }
 
-//Interrupt service request function for the RTC timer. Since more than one source
-//can wake up the processor, set the flag so the main loop takes the appropriate
-//action.
-void rtc_isr() {
-  rtc_flag = true;
+//Interrupt service request function for the watchdog timer. Since more than
+//one source can wake up the processor, set the flag so the main loop takes
+//the appropriate action.
+ISR(WDT_vect) {
+  wdt_flag = true;
 }
 
 //This function waits for user input at startup. If user input is detected within
